@@ -8,16 +8,21 @@ Interactive urban logistics simulation for Greater Boston. Toggle store closures
 
 ## Architecture
 
-```
-Browser (React + Mapbox)
-     ↓ POST /simulate
-FastAPI Backend
-     ↓                    ↓
-OSMnx Road Graph    XGBoost Model
-     ↓                    ↓
-NetworkX Dijkstra   SHAP Explainer
-     ↓                    ↓
-     └──── SimulationResponse ────→ UI
+```mermaid
+flowchart TD
+
+A[Browser React + Mapbox] -->|POST /simulate| B[FastAPI Backend]
+
+B --> C[OSMnx Road Graph]
+B --> D[XGBoost Model]
+
+C --> E[NetworkX Dijkstra]
+D --> F[SHAP Explainer]
+
+E --> G[SimulationResponse]
+F --> G
+
+G --> H[Frontend UI]
 ```
 
 ---
@@ -70,7 +75,7 @@ npm run dev
 
 ## Model Notes
 
-The stockout risk classifier (XGBoost) was trained on synthetically generated labels derived from a deterministic demand-disruption scoring rule applied to real store and neighborhood data. AUC-ROC: 0.9982 on held-out synthetic data. High AUC is expected — the model is recovering a known rule. In production, labels would be replaced with POS-derived stockout events; the pipeline architecture is identical.
+The stockout risk classifier (XGBoost) was trained on synthetically generated labels derived from a deterministic demand-disruption scoring rule applied to real store and neighborhood data. AUC-ROC: 0.9982 on held-out synthetic data. High AUC is expected - the model is recovering a known rule. In production, labels would be replaced with POS-derived stockout events; the pipeline architecture is identical.
 
 SHAP values are computed per inference call and surface the top 2 contributing features in the UI.
 
