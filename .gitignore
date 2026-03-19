@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+*.egg-info/
+
+# Large data files (run scripts to regenerate)
+*.pickle
+*.pkl
+backend/app/data/*.parquet
+backend/app/data/*.geojson
+backend/app/data/*.csv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Fly.io
+.fly/
+
+CLAUDE.md
+frontend/CLAUDE.md
+backend/CLAUDE.md
