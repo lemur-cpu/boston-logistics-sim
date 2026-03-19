@@ -13,7 +13,9 @@
 ## What It Does
 
 The simulator models Boston's grocery supply chain as a live road network, letting you toggle store closures, spike neighborhood demand, and introduce road disruptions. 
+
 A reverse-graph Dijkstra pass computes real-time access times for each neighborhood across the full OSM road network. 
+
 An XGBoost classifier predicts per-store stockout probability with SHAP explanations, and a facility siting algorithm recommends optimal locations for new stores based on current access gaps.
 
 ---
