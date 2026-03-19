@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,9 +17,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Boston Logistics Simulator", version="0.1.0", lifespan=lifespan)
 
+_allowed_origins = [
+    "http://localhost:5173",
+    os.environ.get("FRONTEND_URL", ""),
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[o for o in _allowed_origins if o],
     allow_methods=["*"],
     allow_headers=["*"],
 )
