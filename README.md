@@ -1,121 +1,92 @@
 # Boston Logistics Simulator
 
-Interactive urban logistics simulation for Greater Boston. Toggle store closures,
-introduce road disruptions, and spike neighborhood demand — the simulator predicts
-grocery access time, stockout risk, and the optimal location for the next store.
+Interactive urban logistics simulation for Greater Boston. Toggle store closures, spike neighborhood demand, and introduce road disruptions to see how grocery access time, stockout risk, and network resilience respond in real time.
+
+[Live Demo](https://your-vercel-url.vercel.app)
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Browser                                                         │
-│  ┌──────────────┐  ┌──────────────────────┐  ┌───────────────┐  │
-│  │ ControlPanel │  │   Map (Mapbox GL)     │  │ MetricsPanel  │  │
-│  │  store toggle│  │  choropleth overlay  │  │ charts + SHAP │  │
-│  │  demand slide│  │  store markers       │  │               │  │
-│  └──────┬───────┘  └──────────────────────┘  └───────────────┘  │
-│         │  Zustand simulationStore                               │
-│         └──────────────── POST /simulate ──────────────────────►│
-└────────────────────────────────────────────────────────────────┬┘
-                                                                  │ HTTP
-┌─────────────────────────────────────────────────────────────────▼┐
-│  FastAPI (Python)                                                  │
-│  /simulate  →  road_graph  →  NetworkX shortest-path              │
-│             →  stockout.py →  XGBoost + SHAP                      │
-│  /recommend →  facility.py →  P-Median optimizer                  │
-│  /stores    →  GeoJSON (OSM Overpass)                             │
-│  /neighborhoods → GeoJSON (Boston Open Data)                      │
-└───────────────────────────────────────────────────────────────────┘
+Browser (React + Mapbox)
+     ↓ POST /simulate
+FastAPI Backend
+     ↓                    ↓
+OSMnx Road Graph    XGBoost Model
+     ↓                    ↓
+NetworkX Dijkstra   SHAP Explainer
+     ↓                    ↓
+     └──── SimulationResponse ────→ UI
 ```
 
 ---
 
-## Local Dev Setup
+## Tech Stack
 
-### Prerequisites
-- Node ≥ 20, Python ≥ 3.11
-- A [Mapbox access token](https://account.mapbox.com/)
-
-### 1. Backend
-
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-# One-time data setup (downloads ~200 MB from OSM)
-python scripts/fetch_stores.py
-python scripts/build_graph.py
-python scripts/generate_training_data.py
-# Then open notebooks/train_stockout_model.ipynb and run all cells
-
-uvicorn app.main:app --reload --port 8000
-```
-
-### 2. Frontend
-
-```bash
-cd frontend
-npm install
-
-# Create .env.local
-echo "VITE_MAPBOX_TOKEN=pk.your_token_here" > .env.local
-
-npm run dev
-# → http://localhost:5173
-```
+| Layer     | Tech                                                          |
+|-----------|---------------------------------------------------------------|
+| Frontend  | React 18, TypeScript, Mapbox GL JS, Zustand, Recharts        |
+| Backend   | Python, FastAPI, OSMnx, NetworkX                             |
+| ML        | XGBoost, SHAP, scikit-learn                                  |
+| Data      | OSM Overpass, USDA FARA, Census ACS                          |
+| Deploy    | Vercel (frontend), Fly.io (backend)                          |
 
 ---
 
 ## Dataset Sources
 
-| Dataset | Source | Script |
-|---------|--------|--------|
-| Boston road network | OpenStreetMap via OSMnx | `scripts/build_graph.py` |
-| Grocery store locations | OSM Overpass API | `scripts/fetch_stores.py` |
-| Neighborhood boundaries | [Analyze Boston Open Data](https://data.boston.gov) | manual download |
-| Population by neighborhood | US Census ACS 2022 | manual download |
-| Training labels | Synthetic (rule-based) | `scripts/generate_training_data.py` |
+| Dataset              | Source              | Use                     |
+|----------------------|---------------------|-------------------------|
+| Road network         | OpenStreetMap/OSMnx | Graph traversal         |
+| Grocery stores       | OSM Overpass API    | Store locations         |
+| Neighborhoods        | Analyze Boston      | Choropleth + centroids  |
+| Demographics         | Census ACS 5-year   | Population weights      |
+| Food access baseline | USDA FARA           | Stockout features       |
+| EMS stations         | Analyze Boston      | ER delay baseline       |
+
+---
+
+## Local Dev Setup
+
+```bash
+# Backend
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python scripts/build_graph.py
+python scripts/fetch_stores.py
+python scripts/generate_training_data.py
+uvicorn app.main:app --reload --port 8000
+
+# Frontend (new terminal)
+cd frontend
+npm install
+cp .env.example .env  # add VITE_MAPBOX_TOKEN
+npm run dev
+```
+
+---
+
+## Model Notes
+
+The stockout risk classifier (XGBoost) was trained on synthetically generated labels derived from a deterministic demand-disruption scoring rule applied to real store and neighborhood data. AUC-ROC: 0.9982 on held-out synthetic data. High AUC is expected — the model is recovering a known rule. In production, labels would be replaced with POS-derived stockout events; the pipeline architecture is identical.
+
+SHAP values are computed per inference call and surface the top 2 contributing features in the UI.
 
 ---
 
 ## Deploy
 
-### Backend → Fly.io
+**Frontend (Vercel)**
+- Connect GitHub repo to Vercel
+- Set environment variable: `VITE_MAPBOX_TOKEN`
+- Build command: `npm run build`
+- Output dir: `dist`
 
-```bash
-cd backend
-fly launch --no-deploy   # first time: sets up app
-fly deploy
-```
+**Backend (Fly.io)**
+- `fly launch` (from `backend/`)
+- `fly secrets set FRONTEND_URL=https://your-vercel-url.vercel.app`
+- `fly deploy`
 
-### Frontend → Vercel
-
-```bash
-cd frontend
-vercel --prod
-# Set VITE_MAPBOX_TOKEN in Vercel environment variables
-# Set VITE_API_URL to your Fly.io app URL
-```
-
----
-
-## Project Structure
-
-```
-boston-logistics-sim/
-├── frontend/src/
-│   ├── components/   Map, ControlPanel, MetricsPanel, ExplainCard, StatusBar
-│   ├── store/        Zustand simulation state
-│   ├── hooks/        useSimulation (calls /simulate)
-│   └── types/        Shared TypeScript interfaces
-├── backend/app/
-│   ├── routes/       simulate, stores, neighborhoods, recommend
-│   ├── models/       stockout (XGBoost), facility (P-Median)
-│   ├── graph/        road_graph (OSMnx + NetworkX)
-│   └── schemas.py    Pydantic request/response models
-└── backend/scripts/  One-time ETL + data generation
-```
+Note: data files (pkl, parquet, geojson) must be built locally and copied into the container before deploy. They are not committed to git.

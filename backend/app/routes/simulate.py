@@ -1,6 +1,19 @@
 import math
 from fastapi import APIRouter, Request
-from app.schemas import SimulationRequest, SimulationResponse, StoreRisk, TopFactor
+from app.schemas import SimulationRequest, SimulationResponse, StoreRisk, TopFactor, RecommendedLocation
+
+NEIGHBORHOOD_POPULATION: dict[str, int] = {
+    "roxbury":       60000,
+    "dorchester":    92000,
+    "jamaica_plain": 38000,
+    "south_end":     35000,
+    "fenway":        40000,
+    "back_bay":      22000,
+    "south_boston":  33000,
+    "east_boston":   44000,
+    "charlestown":   18000,
+    "allston":       35000,
+}
 
 router = APIRouter()
 
@@ -54,16 +67,26 @@ async def simulate(req: SimulationRequest, request: Request) -> SimulationRespon
             top_factors=[TopFactor(**f) for f in result["top_factors"]],
         ))
 
-    score = (
-        100.0
-        - 5 * len(req.closed_store_ids)
-        - 3 * len(req.disruptions)
-        - (10 if any(na.access_time_minutes > 20.0 for na in neighborhood_access) else 0)
-    )
+    closed_store_penalty = min(40, len(req.closed_store_ids) * 2)
+    disruption_penalty = min(20, len(req.disruptions) * 3)
+    access_penalty = min(30, sum(10 for na in neighborhood_access if na.access_time_minutes > 15))
+    resilience_score = max(0, round(100 - closed_store_penalty - disruption_penalty - access_penalty))
+
+    recommended: RecommendedLocation | None = None
+    if neighborhood_access:
+        worst = max(neighborhood_access, key=lambda n: n.access_time_minutes)
+        hood = next((h for h in road_graph._neighborhoods if h["id"] == worst.id), None)
+        covered = NEIGHBORHOOD_POPULATION.get(worst.id, 0)
+        recommended = RecommendedLocation(
+            lat=hood["lat"] if hood else 42.3601,
+            lon=hood["lon"] if hood else -71.0589,
+            covered_residents=covered,
+            reason=f"Covers {covered:,} residents averaging {worst.access_time_minutes:.1f} min to nearest store",
+        )
 
     return SimulationResponse(
         neighborhood_access=neighborhood_access,
         store_risks=store_risks,
-        resilience_score=round(max(0.0, min(100.0, score)), 1),
-        recommended_store_location=None,
+        resilience_score=resilience_score,
+        recommended_store_location=recommended,
     )

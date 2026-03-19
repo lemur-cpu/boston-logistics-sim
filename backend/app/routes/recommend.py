@@ -3,12 +3,24 @@ from app.schemas import RecommendedLocation
 
 router = APIRouter()
 
+NEIGHBORHOOD_POPULATION: dict[str, int] = {
+    "roxbury":       60000,
+    "dorchester":    92000,
+    "jamaica_plain": 38000,
+    "south_end":     35000,
+    "fenway":        40000,
+    "back_bay":      22000,
+    "south_boston":  33000,
+    "east_boston":   44000,
+    "charlestown":   18000,
+    "allston":       35000,
+}
+
 
 @router.get("/recommend", response_model=RecommendedLocation)
 async def recommend(
     request: Request,
     closed_store_ids: str = Query(default="", description="Comma-separated store IDs"),
-    weather_severity: float = Query(default=0.0, ge=0.0, le=1.0),
 ) -> RecommendedLocation:
     road_graph = request.app.state.road_graph
 
@@ -20,11 +32,11 @@ async def recommend(
 
     lat = hood["lat"] if hood else 42.3601
     lon = hood["lon"] if hood else -71.0589
-    pop = hood.get("population", 0) if hood else 0
+    covered_residents = NEIGHBORHOOD_POPULATION.get(worst.id, 0)
 
     return RecommendedLocation(
         lat=lat,
         lon=lon,
-        covered_residents=pop,
-        reason=f"Covers ~{pop:,} residents currently averaging {worst.access_time_minutes:.1f} min access time",
+        covered_residents=covered_residents,
+        reason=f"Covers {covered_residents:,} residents averaging {worst.access_time_minutes:.1f} min to nearest store",
     )
