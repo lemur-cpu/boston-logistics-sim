@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+
+const API_BASE = import.meta.env.VITE_API_URL ?? ''
 import { useSimulationStore } from './store/simulationStore'
 import type { Store, StoreRisk } from './types'
 import MapView from './components/Map'
@@ -13,7 +15,7 @@ export default function App() {
   const [selectedStore, setSelectedStore] = useState<StoreRisk | null>(null)
 
   useEffect(() => {
-    fetch('/api/stores')
+    fetch(`${API_BASE}/api/stores`)
       .then((r) => r.json())
       .then((data) => {
         const mapped: Store[] = (data.features ?? []).map((f: any) => ({

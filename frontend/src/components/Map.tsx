@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react'
+
+const API_BASE = import.meta.env.VITE_API_URL ?? ''
 import mapboxgl from 'mapbox-gl'
 import { useSimulationStore } from '../store/simulationStore'
 import type { Store, StoreRisk, SimulationResult } from '../types'
@@ -237,7 +239,7 @@ export default function MapView({ stores, onStoreClick }: Props) {
       })
 
       // ── Fetch neighborhood GeoJSON (may be empty if file not generated) ─
-      fetch('/api/neighborhoods')
+      fetch(`${API_BASE}/api/neighborhoods`)
         .then((r) => r.json())
         .then((data) => {
           neighborhoodsBase.current = data
