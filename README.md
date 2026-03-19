@@ -2,7 +2,6 @@
 
 > An AI-powered urban logistics simulation tool for Boston. Predict grocery access times, store stockout risk, and optimal store placement under simulated disruptions.
 
-[Demo Video](your-loom-link-here) · [GitHub](https://github.com/lemur-cpu/boston-logistics-sim)
 
 ---
 
